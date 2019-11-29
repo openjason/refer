@@ -1,0 +1,268 @@
+#蓝鲸系统安装：
+    如果出现[FAILED]，则检查对应的配置并修复
+	NetworkManager is running, you should shutdown firewalld
+	解决方法：关闭NetworkManager
+	——systemctl stop NetworkManager 临时关闭
+	——systemctl disable NetworkManager 永久关闭网络管理命令
+	####注意大小写敏感
+#centos7 proxy
+	http_proxy = http://username:password@yourproxy:port/
+	https_proxy = http://username:password@yourproxy:port/
+	ftp_proxy = http://username:password@yourproxy:port/
+	export http_proxy
+	export https_proxy
+	export ftp_proxy
+	#######注意，bash 变量后面=号不可有空格。
+	
+
+#docker容器文件拷贝到宿主机
+	docker cp <containerId>:/导出文件的位置/xxx.sql /宿主机的位置
+	示例：docker cp bf4c4fff338c:/root/rest.sql /root/
+	备份：pg_dump -Upostgres st > st.sql
+	恢复：psql -d db1 -U userA -f /pathA/xxx.sql
+
+#excel 批量修改文件名：
+    ="sz000063_"&TEXT(A1,"MM-DD")&".log"	="sz000063_"&TEXT(A1,"YYYY-MM-dd")&".log"	="ren "&E1&" "&F1
+
+#python3连接postgresql
+    使用psycopg2连接postgresql，首先需要安装python psycopg2依赖包
+        pip install psycopg2
+        完整python代码例子如下：
+            import psycopg2
+            conn = psycopg2.connect(database="testinfo", user="postgres", password="***", host="192.168.1.4", port="5432")
+            cur = conn.cursor()
+            cur.execute("SELECT name, threshhold0, threshhold1  from sjy_aqi_threshhold")
+            rows = cur.fetchall()
+            for row in rows:
+               print("NAME = ")
+            conn.close()
+
+#根据需要创建符合自己编码方式的数据库;数据库编码参考网址
+    CREATE DATABASE st
+    WITH
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'en_US.utf8'
+    LC_CTYPE = 'en_US.utf8'
+    TABLESPACE = pg_default
+    template = template0
+    CONNECTION LIMIT = -1;
+
+#windows sql https://www.heidisql.com/download.php
+    HeidiSQL runs fine on Windows XP, Vista, 7, 8 and 10. Using Wine, it mostly runs fine on Linux and MacOS.
+    Connecting to TLS 1.2 enabled MS SQL Servers requires an updated OLE DB Driver 18 for SQL Server to be installed.
+    Wine users: For MS SQL connections, avoid using Wine 3.15 up to 4.1. Instead, use Wine 3.14 or 4.2 - these should work.
+    Connecting to PostgreSQL may require to have Visual C++ Redistributable Package installed
+#Heidisql连 postgresql 不同数据库，必须重新连接，默认连的Postgres的数据库，
+    须在连之前选择相应的数据库名称
+
+#centos7 psql postgresql client
+	yum install postgresql.x86_64
+	指定用户运行 #psql -h 127.0.0.1 -U postgres		psql -h localhost -p 5432 -U postgres --password
+
+#centos7 docker postgresql
+    docker run --name pg -e POSTGRES_PASSWORD=123456 -p 5432:5432 -d postgres  // 生成容器
+	用户：postgres，mm（上一行）
+	docker exec -it postgres_docker bash
+
+#centos7 部署docker
+	wget -P /etc/yum.repos.d/ https://download.docker.com/linux/centos/docker-ce.repo
+		yum install -y docker-ce
+
+	CentOS 版本 7.4，Docker 版本 docker-ce 17 及以上
+	ll /var/run/docker.sock
+		srw-rw----. 1 root docker 0 May 25 14:12 /var/run/docker.sock
+		# 添加执行 docker 命令的用户，这里为 duser
+			useradd duser
+		# 把 ibaboss 用户加入 docker 组
+			usermod -G docker ibaboss
+		第一次pull 镜像 报错. 处理方法： 重新pull 镜像
+
+#zabbix 4 安装准备
+# mysql5.7 commumnity centos7
+	wget https://dev.mysql.com/get/mysql57-community-release-el7-9.noarch.rpm
+	wget https://dev.mysql.com/get/mysql57-community-release-el7-11.noarch.rpm
+	yum install mysql-server
+	systemctl start mysqld #启动MySQL
+	获取安装时的临时密码（在第一次登录时就是用这个密码）：grep 'temporary password' /var/log/mysqld.log
+	倘若没有获取临时密码，则删除原来安装过的mysql残留的数据 rm -rf /var/lib/mysql  再启动mysql
+	SET password for 'root'@'localhost'=password('newpassword');
+	使用yum直接安装php，php-gd，php-mysql，php-fpm php-mbstring php-xml 
+	配置php 编辑/etc目录下php.ini文件
+	post_max_size = 16M
+	max_execution_time = 300
+	max_input_time = 300
+	date.timezone = "Asia/Shanghai"
+	开机启动php-fpm
+	# systemctl enable php-fpm.service
+	启动php-fpm
+	# systemctl start php-fpm
+			安装nginx
+			# yum install nginx
+			设置开机启动并启动nginx
+			# systemctl enable nginx
+			# systemctl start nginx
+	启动httpd，不安装nginx
+	=============================
+	a. Install Zabbix repository
+	documentation
+	# rpm -Uvh https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.el7.noarch.rpm
+	# yum clean all 
+	b. Install Zabbix server, frontend, agent
+	# yum -y install zabbix-server-mysql zabbix-web-mysql zabbix-agent 
+	c. Create initial database
+	documentation
+	# mysql -uroot -p
+	mysql> create database zabbix character set utf8 collate utf8_bin;
+	mysql> grant all privileges on zabbix.* to zabbix@localhost identified by 'pass123word';
+	mysql> quit; 
+	Import initial schema and data. You will be prompted to enter your newly created password.
+	# zcat /usr/share/doc/zabbix-server-mysql*/create.sql.gz | mysql -uzabbix -p zabbix 
+	d. Configure the database for Zabbix server
+	Edit file /etc/zabbix/zabbix_server.conf		DBPassword=password（当前密码）
+	e. Configure PHP for Zabbix frontend
+	Edit file /etc/httpd/conf.d/zabbix.conf, uncomment and set the right timezone for you.
+	# php_value date.timezone Europe/Riga 
+	f. Start Zabbix server and agent processes
+	Start Zabbix server and agent processes and make it start at system boot.
+	# systemctl restart zabbix-server zabbix-agent httpd
+	# systemctl enable zabbix-server zabbix-agent httpd 
+
+
+#zabbix cpu 使用率报警：注意 selinux \ firewalld
+    #添加触发器：
+	#知道怎么回事以后，那监控cpu使用率就好办了，cpu使用率超过百分之90就告警
+		name:			CPU user percent gt 90%
+		expression:		{Template OS Linux:system.cpu.util[,idle].avg(1m)}<10
+		Severity:		Warning
+	#1,设置zabbix客户端用户权限
+	visudo
+		#添加 
+		Defaults:zabbix !requiretty #不需要终端登录 
+		zabbix ALL=(ALL) NOPASSWD:ALL #设置zabbix用户拥有所有权限并且免密码登录
+	#2.zabbix客户端配置文件开启对远程命令的支持
+	vim /etc/zabbix/zabbix_agentd.conf
+		#修改值为1 
+		EnableRemoteCommands=1
+	#3.重启服务后zabbix服务端测试：
+		zabbix_get -s 192.168.a.b -k "system.run[sudo df -h]"
+	#添加动作：
+		name:
+		条件：[选择对应的触发器]
+		步骤持续时间：2m ，默认0立即执行
+		操作类型：远程命令
+		目标列表：当前主机，或指定特定主机（如发送短信，应制定发送短信的主机的命令）
+		配置命令[zabbix客户端]: sudo /bin/bash /restart_ssh.sh
+								sudo reboot
+		
+		
+#消耗cup资源耗尽：
+centos:
+	for i in seq 2;do dd if=/dev/zero of=/dev/null & done	#数字2为cpu内核数量，可查询/proc/cpuinfo
+
+
+#selinux zabbix
+# grep zabbix_t /var/log/audit/audit.log | audit2allow -M zabbix_server_custom
+# semodule -i zabbix_server_custom.pp
+Zabbix server might not be able to start properly due to still missing SELinux rules.
+Repeat this set of commands at least three times and check the Zabbix server log after each of them. It is because every time a new SELinux rule is added Zabbix server gets a step further and gets logged into audit log. Thus it is possible to pick up new issues and add them to the custom SELinux policy.
+
+# getsebool -a | grep zabbix
+And permanently enable them if needed:
+Code:# setsebool -P zabbix_can_network=1
+
+firewall-cmd --permanent --add-port=10050/tcp
+firewall-cmd --list-ports
+firewall-cmd --reload 
+
+
+nginx rpm包下载
+http://nginx.org/packages/rhel/7/x86_64/RPMS/
+
+location / {
+autoindex on; #打开目录浏览功能
+autoindex_exact_size off; # off：以可读的方式显示文件大小
+autoindex_localtime on; # on、off：是否以服务器的文件时间作为显示的时间
+charset utf-8,gbk; #展示中文文件名
+index index.html;
+}
+#http连接提示forbiden拒绝了，可能的原因的是selinux拦截。
+cat /var/log/audit/audit.log | grep nginx | grep denied | audit2allow -M mynginx  
+semodule -i mynginx.pp 
+
+mysql:
+-- 创建一个远程用户 
+ create user test identified by '123456'; 
+ create user expressapi identified by 'expressapipass'; 
+
+分配权限 
+ grant all privileges on expressapi.* to 'expressapi'@'%'identified by 'password' with grant option; 
+ flush privileges ; 
+
+备份恢复导出示例：
+	mysql -h数据库服务器 -u用户名 -p 要恢复的数据库名 < 要恢复的数据库文件完整路径
+条件导出：
+	mysqldump -uroot -p 数据库名 表名 -w"id>100" > /home/test.sql
+1、导出数据和表结构——将特定数据库特定表中的数据和表格结构和数据全部返回
+	mysqldump -h 1.1.1.1 -uuser -p databasename > sql.sql
+2、导出表结构却不导出表数据——只返回特定数据库特定表格的表格结构，不返回数据,添加“-d”命令参数
+	mysqldump -h 1.1.1.1 -uuser -p databasename -d > sql.sql
+3、导出表结构和满足挑顶条件的表数据——只返回特定数据库中特定表的表格结构和满足特定条件的数据
+	mysqldump --u  b_user -h 101.3.20.33 -p'H_password'  -P3306 database_di up_subjects --where=" ctime>'2017-01-01' and ctime<'2017-06-30'" > 0101_0630_up_subjects.sql
+4、导出数据却不导出表结构——只返回特定数据库中特定表格的数据，不返回表格结构，添加“-t”命令参数
+	mysqldump --u  b_user -h 101.3.20.33 -p'H_password' -t -P3306 database_di up_subjects  >0101_0630_up_subjects.sql
+5、导出特定数据库的所有表格的表结构及其数据，添加“--databases ”命令参数
+	mysqldump  --u  b_user -h 101.3.20.33 -p'H_password' -P3306 --databases test  > all_database.sql
+
+
+#命令行备份中信物流邮寄信息系统数据
+dbbackup.sh:
+#!/bin/bash
+/usr/bin/mysqldump -u root -pAdmin@007 --databases expressapi --tables express_record --where="updateat<'`date +%Y-%m-%d -d "14 days ago"`'"  | gzip > /bak/database_`date '+%m-%d-%Y'`.sql.gz
+
+#命令行删除中信物流邮寄信息系统数据
+mysql -uroot -pAdmin@007 </bak/erase.sql  
+erase.sql:
+#select count(*) from express_record where updateat < DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 14 DAY),'%Y-%m-%d');
+use expressapi;
+delete from express_record where updateat < DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 14 DAY),'%Y-%m-%d');
+
+
+visudo		搜索root ，添加一行
+
+vi 显示文件名（总是显示状态栏）		set laststatus = 2
+
+sudo 文件默认属性
+---s--x--x		root		root		sudo
+		-s setuid
+		S  S  T		大写表示原位置无相应权限
+					小写表示原位置有相应权限
+
+setuid说明:
+passwd命令有一个特殊的权限标记s ，存在于文件所有者的权限位上。这是一类特殊的权限SetUID ，可以这样来理解它：当一个具有执行权限的文件设置SetUID权限后，用户执行这个文件时将以文件所有者的身份执行。passwd命令具有SetUID权限，所有者为root（Linux中的命令默认所有者都是root），也就是说当普通用户使用passwd更改自己密码的时候，那一瞬间突然灵魂附体了，实际在以passwd命令所有者root的身份在执行，root当然可以将密码写入/etc/shadow文件，命令执行完成后该身份也随之消失。
+
+2019年5月15日：交通银行工程师上门对接收机进行维护，病毒升级，系统打补丁。
+制卡文件接收机正常，升级和病毒定义更新后正常。FCC回传报表接收机异常，通信不通，联系交通银行陈佳依查问题，发现配置文件损坏，需要重装。
+nodename dxhp_15.22
+IP 182.180.127.211
+port 30000
+spvDirection center <-serverNode
+mngCenterIP 192.168.168.76
+mngCenterPort 35000
+logcenterip 192.168.168.76
+logcenterip 35000
+
+查看以上配置：
+D:...\TongGTP6.1\gtp_stat -node
+
+#补充：2019年10月14日，FCC报通信不通，加班回机房重启了服务器，等了未果，第二天说可以了，以上命令执行出错，无权限，5月的时候还可以运行的，权限回收了？
+#查看log文件夹最后一个日志文件，日志内信息不太明确，不过下午5点的日志视乎与其他日志不太对。
+
+
+假设现在在图形用户界面，打开终端，输入如下命令：
+ sudo systemctl set-default multi-user.target
+现在如果想进入图形用户界面（仅进入一次，重启系统后仍然会进入命令行模式），可执行如下命令：
+ sudo systemctl start lightdm
+　　如果想设置为系统启动后默认进入图形用户界面，执行如下命令：
+ sudo systemctl set-default graphical.target
+　　然后执行reboot命令重启系统即可。
