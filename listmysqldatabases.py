@@ -65,6 +65,13 @@ class Mysql(object):
         if not db_list:
             return False
 
+        #保存结果数据库列表
+        with open('dblist.txt','w') as fp:
+            for oneitem in db_list:
+                fp.write(oneitem+'\n')
+
+
+
         return db_list
 
     def get_user_list(self):
@@ -156,13 +163,14 @@ class Mysql(object):
                                 info_dict[user]["all"].append(value)
 
         # print(info_dict)
+        
         return info_dict
 
 
 if __name__ == '__main__':
     host = "10.88.23.199"
     user = "it"
-    passwd = "it007"
+    passwd = "007"
     port = 3306
     db_name = "mysql"
 
@@ -172,4 +180,3 @@ if __name__ == '__main__':
 
     print("all_db_list",all_db_list)
     print("user_power",user_power)
-
